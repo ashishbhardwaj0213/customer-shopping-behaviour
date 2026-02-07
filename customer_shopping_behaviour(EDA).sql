@@ -1,0 +1,139 @@
+create database Customer_shopping_behaviour;
+USE  CUSTOMER_SHOPPING_BEHAVIOUR;
+
+SELECT * FROM CUSTOMER;
+
+ALTER TABLE CUSTOMER
+ADD FREQUENCY_OF_PURCHASE_DAYS INT;
+
+UPDATE CUSTOMER
+SET FREQUENCY_OF_PURCHASE_DAYS = (
+    CASE frequency_of_purchases
+        WHEN 'FORTNIGHTLY' THEN 15
+        WHEN 'ANNUALLY' THEN 365
+        WHEN 'QUARTERLY' THEN 120
+        WHEN 'WEEKLY' THEN 7
+        WHEN 'BI-WEEKLY' THEN 14
+        WHEN 'EVERY 3 MONTHS' THEN 90
+        WHEN 'MONTHLY' THEN 30
+    END
+);
+
+-- 1. What is the distribution of customers by age group? --
+select aged_group,count(*) as count 
+from customer group by aged_group;
+
+-- 2. Which gender generates the highest total revenue?
+SELECT GENDER, SUM(purchase_amount)AS TOTAL_REVENUE 
+FROM CUSTOMER GROUP BY GENDER ORDER BY 2 DESC;
+
+-- 3. What is the average age of customers who have a 'Subscription Status' of 'Yes'?
+SELECT AVG(AGE)AS AVERAGE_AGE_OF_CUSTOMER 
+FROM CUSTOMER WHERE SUBSCRIPTION_STATUS= "YES";
+
+-- 4. What are the top 5 most purchased items?
+SELECT item_purchased, COUNT(*) 
+FROM CUSTOMER GROUP BY item_purchased ORDER BY 2 DESC LIMIT 5; 
+
+-- 5. Which category brings in the most revenue?
+SELECT CATEGORY, SUM(purchase_amount)AS TOTAL_REVENUE 
+FROM CUSTOMER GROUP BY CATEGORY ORDER BY 2 DESC LIMIT 1;
+
+-- 6. What is the average purchase amount for each season?
+SELECT  SEASON, AVG(PURCHASE_AMOUNT) AS AVERAGE_AMOUNT 
+FROM CUSTOMER GROUP BY SEASON;
+
+-- 7. Which size is the most popular across all categories?
+SELECT SIZE, COUNT(*)AS COUNT
+ FROM CUSTOMER GROUP BY SIZE;
+
+-- 8. Which 10 locations have the highest number of customers?
+SELECT LOCATION, COUNT(*)AS COUNT 
+FROM CUSTOMER GROUP BY LOCATION ORDER BY COUNT DESC LIMIT 10;
+
+-- 9. Does the shipping type affect the average review rating?
+SELECT SHIPPING_TYPE, ROUND(AVG(REVIEW_RATING), 2) AS AVERAGE_REVIEW_RATING 
+FROM CUSTOMER GROUP BY SHIPPING_TYPE ORDER BY 2 DESC;
+
+-- 10. What is the average number of previous purchases for subscribers vs. non-subscribers?
+SELECT subscription_status, ROUND(AVG(previous_purchases),2) AS AVGERAGE_PREVIOUS_PURCHASE 
+FROM CUSTOMER GROUP BY subscription_status;
+
+-- 11. Which payment method is most frequently used by customers?
+SELECT PAYMENT_METHOD, COUNT(*)AS FREQUENCY 
+FROM CUSTOMER group by PAYMENT_METHOD ORDER BY 2 DESC;
+
+-- 12. What is the average review rating for purchases where a discount was applied vs. not applied?
+SELECT discount_applied, ROUND(AVG(REVIEW_RATING),2) AS AVG_REVIEW_RATINGS
+ FROM CUSTOMER GROUP BY discount_applied;
+
+-- 13. What is the most popular color for each category?
+WITH CTE1 AS (
+SELECT CATEGORY, COLOR ,COUNT(COLOR) AS TOTAL_COUNTS FROM CUSTOMER GROUP BY CATEGORY, COLOR
+),
+CTE2 AS(
+SELECT CATEGORY, COLOR, TOTAL_COUNTS, RANK() OVER (PARTITION BY CATEGORY ORDER BY TOTAL_COUNTS DESC)AS RANKING FROM CTE1 
+)
+SELECT CATEGORY, COLOR, TOTAL_COUNTS , RANKING FROM CTE2 WHERE RANKING<2;
+
+-- 14. Are frequent purchasers (Frequency of Purchases) spending more per transaction on average?
+SELECT frequency_of_purchases, ROUND(AVG(purchase_amount),2)AS AVERAGE_SPENT FROM CUSTOMER GROUP BY FREQUENCY_OF_PURCHASES ORDER BY AVG(PURCHASE_AMOUNT) DESC;
+
+-- 15.Identify the "High Value" locations (Locations with total revenue > [Average Location Revenue]).
+WITH CTE1 AS (
+SELECT LOCATION, SUM(PURCHASE_AMOUNT)AS TOTAL_REVENUE FROM CUSTOMER GROUP BY LOCATION
+),
+CTE2 AS (
+SELECT LOCATION, TOTAL_REVENUE, AVG(TOTAL_REVENUE) OVER () AS AVERAGE_REVENUE FROM CTE1
+)
+
+SELECT LOCATION, TOTAL_REVENUE, AVERAGE_REVENUE FROM CTE2 WHERE TOTAL_REVENUE> AVERAGE_REVENUE;
+
+-- 16.Which customers are "Champions" (Top 25% in both frequency and spending)?
+WITH CTE1 AS (
+SELECT CUSTOMER_ID, 
+NTILE(4) OVER (ORDER BY previous_purchases ASC)AS FREQ_BUCKET,
+NTILE(4) OVER (ORDER BY PURCHASE_AMOUNT DESC) AS SPENDING_BUCKET
+FROM CUSTOMER 
+)
+SELECT CUSTOMER_ID FROM CTE1 WHERE FREQ_BUCKET=1 AND SPENDING_BUCKET=1
+ORDER BY 1 ASC;
+
+-- 17. What is the cumulative revenue contribution by each age group?
+WITH CTE1 AS(
+SELECT AGED_GROUP, SUM(PURCHASE_AMOUNT)AS TOTAL_REVENUE FROM CUSTOMER GROUP BY AGED_GROUP
+)
+SELECT AGED_GROUP, TOTAL_REVENUE, SUM(TOTAL_REVENUE) OVER (ORDER BY TOTAL_REVENUE ASC) AS CUMULATIVE_REVENUE FROM CTE1;
+
+-- 18. Which item is the "Revenue Leader" in each category?
+WITH CTE1 AS(
+SELECT CATEGORY, ITEM_PURCHASED, SUM(PURCHASE_AMOUNT)AS TOTAL_REVENUE FROM CUSTOMER GROUP BY CATEGORY, ITEM_PURCHASED
+), CTE2 AS(
+SELECT * , RANK() OVER (PARTITION BY CATEGORY ORDER BY TOTAL_REVENUE DESC)AS RANKING FROM CTE1
+)
+SELECT * FROM CTE2 WHERE RANKING=1;
+
+-- 19. Do subscribers spend significantly more than non-subscribers per transaction?
+SELECT SUBSCRIPTION_STATUS , SUM(PURCHASE_AMOUNT) AS TOTAL_REVENUE, AVG(PURCHASE_AMOUNT)AS AVG_SPENT FROM CUSTOMER GROUP BY subscription_status;
+
+-- 20. What is the most common "Next Purchase" frequency for high-rating vs. low-rating customers?
+WITH CTE1 AS(
+SELECT 
+COUNT(*), AVG(PREVIOUS_PURCHASES) AS AVERAGE_PURCHASE_DAYS,
+CASE 
+  WHEN REVIEW_RATING > 3.5 THEN 'HIGH RATING'
+  ELSE 'LOW RATING'
+END AS RATING_GROUP
+FROM CUSTOMER
+GROUP BY RATING_GROUP
+)
+SELECT * FROM CTE1;
+
+SELECT * FROM CUSTOMER;
+
+-- 21. Which color-size combination is most frequently returned or low-rated?
+WITH CTE1 AS( 
+SELECT COLOR, SIZE, ROUND(AVG(REVIEW_RATING),2)AS AVG_RATINGS,
+ RANK() OVER ( PARTITION BY COLOR ORDER BY ROUND(AVG(REVIEW_RATING),2)) AS RATING FROM CUSTOMER GROUP BY 1,2 
+ )
+ SELECT COLOR,SIZE,AVG_RATINGS FROM CTE1 WHERE RATING=1 ORDER BY COLOR ASC;
