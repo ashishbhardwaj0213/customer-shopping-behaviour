@@ -9,6 +9,19 @@ This project analyzes **customer shopping behavior** using Python, SQL, and Powe
 It covers the complete analytics pipeline — from **data cleaning and transformation** to **SQL-driven insights** and **interactive dashboard visualization**.
 
 ---
+## Business Understanding
+Understanding customer shopping behavior is essential for improving sales strategies, customer engagement, and business decision-making.
+
+The objectives of this project were to:
+- Analyze customer demographic distribution
+- Examine purchase amount patterns
+- Understand category-wise purchasing trends
+- Identify behavior differences across gender and age groups
+- Explore rating distribution and customer satisfaction patterns
+
+This project was selected to strengthen practical data analysis skills and generate business-focused insights from customer-level data.
+
+---
 
 ## 📁 Dataset Snapshot
 - 📦 **Records:** 3,900 customers  
